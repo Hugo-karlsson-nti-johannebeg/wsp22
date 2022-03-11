@@ -23,15 +23,15 @@ post('/login') do
   db.results_as_hash = true
   result = db.execute("SELECT * FROM users WHERE username = ?",username).first
   p "result is #{result}"
-  password = result["password"]
+  password_from_db  = result["password"]
   id =result["id"]
   
 
   
 
-  if BCrypt::Password.new(password) == password
+  if BCrypt::Password.new(password_from_db) == password
     session[:id] = id
-    redirect('/todos')
+    redirect('/main')
   else 
     "Fel Lösen"
   end
@@ -65,4 +65,9 @@ post('/users/new') do
     "lösenordet matchade inte"
   end
 
+end
+
+
+get ('/main') do
+  
 end
