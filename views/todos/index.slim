@@ -1,4 +1,10 @@
-h2 Alla dina todos #{session[:id]}
-
-- todos.each do |todo|
-    p = todo[:content]
+- if is_admin 
+    a href="/movies/new" Lägg till film
+ol
+    - movies.each do |movie|
+        li
+            a href="movies/#{movie['id']}" #{movie['title']}
+        - if is_admin
+            a href="movies/#{movie['id']}/edit" Uppdatera
+            form method="POST" action="movies/#{movie['id']}/delete"
+                input type="submit" value="Delete"/

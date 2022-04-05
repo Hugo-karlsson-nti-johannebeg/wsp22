@@ -31,48 +31,80 @@ post('/login') do
 
   if BCrypt::Password.new(password_from_db) == password
     session[:id] = id
-    redirect('/main')
+    redirect('/movies')
   else 
     "Fel Lösen"
   end
-  redirect('/')
 end 
-
-get('/todos') do
-  id = session[:id].to_i
-  db = SQLite3::Database.new('db/data.db')
-  db.results_as_hash = true
-  result = db.execute("SELECT * FROM todos WHERE user_id = ?",id)
-  slim(:"todos/index",locals:{todos:result})
-end
-
-
-
 
 post('/users/new') do
   username = params[:username]
   password = params[:password]
   password_confirm = params[:password_confirm]
   usertype = params[:usertype]
+  db = SQLite3::Database.new('db/data.db')
+  
+  result = db.execute("SELECT id FROM users WHERE username = ?", username)
 
-  if (password == password_confirm)
-    password_digest = BCrypt::Password.create(password)
-    db = SQLite3::Database.new('db/data.db')
-    db.execute("INSERT INTO users (username,password,usertype) VALUES(?,?,?)", username,password_digest,usertype)
-    redirect('/')
-
-
+  if result.empty?
+    if (password == password_confirm)
+      password_digest = BCrypt::Password.create(password)
+      db.execute("INSERT INTO users (username,password,usertype) VALUES(?,?,?)", username,password_digest,usertype)
+      redirect('/')
+    
+    
+    else
+      "lösenordet matchade inte"
+    end
   else
-    "lösenordet matchade inte"
+    "Användaren finns redan"
   end
 
 end
 
-
-get('/main') do
+get('/movies') do
   if session[:id] == nil
     "Du måste logga in"
   else
-    slim(:"main")
+    db = SQLite3::Database.new('db/data.db')
+    db.results_as_hash = true
+    result = db.execute("SELECT * FROM movies")
+    user = db.execute("SELECT usertype FROM users WHERE id = ?",session[:id]).first
+    is_admin = user["usertype"] == 2
+    slim(:"todos/index",locals:{movies:result,is_admin:is_admin})
+  end
+end
+
+get('/movies/new') do
+  if session[:id] == nil
+    "Du måste logga in"
+  else
+    db = SQLite3::Database.new('db/data.db')
+    db.results_as_hash = true
+    result = db.execute("SELECT usertype FROM users WHERE id = ?",session[:id]).first
+    if result["usertype"] == 2
+      slim(:"todos/new")
+    else
+      "Du har ej behörighet"
+    end
+  end
+end
+
+post('/movies/new') do
+  title = params[:title]
+  studio_name = params[:studio_name]
+  db = SQLite3::Database.new('db/data.db')
+  db.results_as_hash = true
+  studio = db.execute("SELECT studio_id FROM studios WHERE name = ?",studio_name).first
+  if studio == nil
+    db.execute("INSERT INTO studios (name) VALUES (?)",studio_name)
+    studio = db.execute("SELECT studio_id FROM studios WHERE name = ?",studio_name).first
+  end
+  result = db.execute("SELECT * FROM movies WHERE title = ?",title)
+  if result.empty?
+    db.execute("INSERT INTO movies (title,studio_id) VALUES (?,?)",title,studio["studio_id"])
+    redirect('/movies')
+  else
+    "Filmen finns redan!"
   end
 end
