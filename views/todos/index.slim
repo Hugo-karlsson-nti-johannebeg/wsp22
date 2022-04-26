@@ -1,10 +1,11 @@
+section id="movies"
 - if is_admin 
-    a href="/movies/new" Lägg till film
+  a href="/movies/new" Lägg till Spel
 ol
     - movies.each do |movie|
-        li
-            a href="movies/#{movie['id']}" #{movie['title']}
-        - if is_admin
-            a href="movies/#{movie['id']}/edit" Uppdatera
-            form method="POST" action="movies/#{movie['id']}/delete"
-                input type="submit" value="Delete"/
+      li 
+        a href="movies/#{movie['id']}" #{movie['title']}
+      - if is_admin
+          a href="movies/#{movie['id']}/edit" Uppdatera
+          form method="POST" action="movies/#{movie['id']}/delete"
+            input type="submit" value="Delete"
