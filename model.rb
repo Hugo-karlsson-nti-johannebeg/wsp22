@@ -5,18 +5,20 @@ def connect_to_database(path)
     return db
 end
 
-def check_login_status()
-    if session[:id] == nil
-        session[:error] = "Du måste logga in för att se detta innehåll!"
-        redirect('/error')
+def check_login_status(id)
+    if id == nil
+      return false
     end
+    return true
 end
 
-def check_admin_rights()
-    if !session[:is_admin]
-        session[:error] = "Du har inte behörighet att se innehållet"
-        redirect('/error')
-    end
+def check_admin_rights(id)
+  db = connect_to_database('db/data.db')
+  user = db.execute("SELECT usertype FROM users WHERE id = ?",id).first
+  if user["usertype"] != 2
+    return false
+  end
+  return true
 end
 
 def get_movie_info(id)
@@ -28,11 +30,11 @@ def get_movie_info(id)
 end
 
 def get_movies()
-    db = connect_to_database('db/data.db')
-    result = db.execute("SELECT * FROM movies")
+  db = connect_to_database('db/data.db')
+  return db.execute("SELECT * FROM movies")
 end
 
-def addMovie(title, studio_id, genres)
+def addMovie(title, studio_name, genres)
     db = connect_to_database('db/data.db')
     studio = db.execute("SELECT studio_id FROM studios WHERE name = ?",studio_name).first
     if studio == nil
@@ -45,12 +47,14 @@ def addMovie(title, studio_id, genres)
       movie = db.execute("SELECT id FROM movies WHERE title = ?",title).first
       genres.each do |genre|
         temp = db.execute("SELECT id FROM genres WHERE name = ?",genre).first
+        if temp == nil
+          return false
+        end
         db.execute("INSERT INTO movie_genre_rel (movie_id,genre_id) VALUES (?,?)",movie["id"],temp["id"])
       end
-      redirect('/movies')
+      return true
     else
-      session[:error] = "Filmen finns redan!"
-      redirect('/error')
+      return false
     end
 end
 
@@ -91,29 +95,22 @@ def login_user(username, password)
     db = connect_to_database('db/data.db')
     result = db.execute("SELECT * FROM users WHERE username = ?",username).first
     if result == nil
-        session[:error] = "Fel användarnamn eller lösenord!"
-        redirect('/error')
+      return false
     end
     password_from_db  = result["password"]
     id = result["id"]
     if BCrypt::Password.new(password_from_db) == password
-      session[:id] = id
       is_admin = result["usertype"]
-      if is_admin == 2
-        session[:is_admin] = true
-      end
-      redirect('/movies')
+      return [true, is_admin == 2, id]
     else 
-      session[:error] = "Fel användarnamn eller lösenord!"
-      redirect('/error')
+      return false
     end
 end
 
 def create_new_user(username, password, password_confirm, usertype, admin_key)
     current_admin_key = "NTI2022"
     if usertype == 2 && admin_key != current_admin_key
-      session[:error] = "Fel Admin-Nyckel"
-      redirect('/error')
+      return false
     end
     db = connect_to_database('db/data.db')
     result = db.execute("SELECT id FROM users WHERE username = ?", username)
@@ -121,13 +118,51 @@ def create_new_user(username, password, password_confirm, usertype, admin_key)
       if (password == password_confirm)
         password_digest = BCrypt::Password.create(password)
         db.execute("INSERT INTO users (username,password,usertype) VALUES(?,?,?)", username,password_digest,usertype)
-        redirect('/')
+        return true
       else
-        session[:error] = "lösenordet matchade inte"
-        redirect('/error')
+        return false
       end
     else
-      session[:error] = "Användaren finns redan"
-      redirect('/error')
+      return false
     end
+    return false
+end
+
+def get_game_comments(movie_id)
+  db = connect_to_database('db/data.db')
+  return db.execute("SELECT * FROM movie_user_rel WHERE movie_id = ?",movie_id)
+end
+
+def get_user_comments(user_id)
+  db = connect_to_database('db/data.db')
+  return db.execute("SELECT * FROM movie_user_rel WHERE user_id = ?",user_id)
+end
+
+def add_comment(comment, movie_id, user_id)
+  db = connect_to_database('db/data.db')
+  db.execute("INSERT INTO movie_user_rel (movie_id,user_id,comment) VALUES (?,?,?)",movie_id,user_id,comment)
+end
+
+def check_comment_edit_rights(id,user)
+  db = connect_to_database('db/data.db')
+  comments_user = db.execute("SELECT user_id FROM movie_user_rel WHERE id = ?",id).first
+  if check_admin_rights(user) or user == comments_user['user_id']
+    return true
+  end
+  return false
+end
+
+def get_comment_info(id)
+  db = connect_to_database('db/data.db')
+  return db.execute("SELECT * FROM movie_user_rel WHERE id = ?",id).first
+end
+
+def edit_comment(id,comment)
+  db = connect_to_database('db/data.db')
+  db.execute("UPDATE movie_user_rel SET comment = ? WHERE id = ?",comment,id)
+end
+
+def delete_comment(id)
+  db = connect_to_database('db/data.db')
+  db.execute("DELETE FROM movie_user_rel WHERE id = ?",id)
 end
