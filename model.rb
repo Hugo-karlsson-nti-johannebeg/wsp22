@@ -128,7 +128,7 @@ def create_new_user(username, password, password_confirm, usertype, admin_key)
     return false
 end
 
-def get_game_comments(movie_id)
+def get_movie_comments(movie_id)
   db = connect_to_database('db/data.db')
   return db.execute("SELECT * FROM movie_user_rel WHERE movie_id = ?",movie_id)
 end

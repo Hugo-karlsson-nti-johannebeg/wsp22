@@ -70,7 +70,7 @@ get('/movies/:id') do
   id = params[:id].to_i
   user_id = session[:id]
   info = get_movie_info(id)
-  comments = get_game_comments(id)
+  comments = get_movie_comments(id)
   slim(:"todos/show",locals:{movie:info[0],studio:info[1],tags:info[2],comments:comments})
 end
 
